@@ -23,13 +23,83 @@ error_reporting(0);
         $row = mysql_fetch_row($result);
 
         $schoolyear = $row[0]; 
-        echo $schoolyear;
+      
+
+
+                      function generatePassword ($length = 8)
+                                {
+                                  $genpassword = "";
+                                  $possible = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"; 
+                                  $i = 0; 
+                                  while ($i < $length) { 
+                                    $char = substr($possible, mt_rand(0, strlen($possible)-1), 1);
+                                    if (!strstr($genpassword, $char)) { 
+                                      $genpassword .= $char;
+                                      $i++;
+                                    }
+                                  }
+                                  return $genpassword;
+                                } 
+                            
+
+
+
+     if (isset($_POST['submit_checklist'])) {
+        $req_nso = mysql_real_escape_string(htmlspecialchars( $_POST['req_nso']));
+        $req_pic = mysql_real_escape_string(htmlspecialchars( $_POST['req_pic']));
+        $req_exam = mysql_real_escape_string(htmlspecialchars( $_POST['req_exam']));
+        $req_pass = mysql_real_escape_string(htmlspecialchars( $_POST['req_pass']));
+        $req_f137 = mysql_real_escape_string(htmlspecialchars( $_POST['req_f137']));
+        $req_gmc = mysql_real_escape_string(htmlspecialchars( $_POST['req_gmc']));
+        $req_cert = mysql_real_escape_string(htmlspecialchars( $_POST['req_cert']));
+        
+
+
+
+         $result_checklist = mysql_query( "UPDATE T_APPLICATION SET REQ_NSO = $req_nso, REQ_PIC =$req_pic, REQ_EXAM = $req_exam, REQ_PASS = $req_exam, REQ_F137 = $req_f137, REQ_GMC = $req_gmc, REQ_CERT = $req_cert ")
+
+                
+                  or die(mysql_error());
+
+
+     }
+              if (isset($_POST['approve'])) {
+                 $updateid = mysql_real_escape_string(htmlspecialchars( $_POST['updateid']));
+                   // echo "<script>alert($updateid)</script>";
+   
+  
+         $result_approve = mysql_query( "UPDATE T_APPLICATION SET A_STATUS = 'Approved', A_APPLY_LEVEL = prev_grade_level +1 ")
+    
+                  or die(mysql_error());
+
+        $result_learnerstat = mysql_query( "INSERT INTO R_LEARNER_STATUS (LEARNER_FK, status) VALUES ($updateid, 'Inactive') ")
+    
+                  or die(mysql_error());
+
+         $result_learnerstat = mysql_query( "INSERT INTO R_LEARNER (LEARNER_FK, USERNAME, PASS) VALUES ($updateid, '$lrn', generatePassword(); ) ")
+    
+                  or die(mysql_error());
+
+
+
+     }       
+
+     if (isset($_POST['revoke'])) {
+                 $updateid = mysql_real_escape_string(htmlspecialchars( $_POST['updateid']));
+                  //  echo "<script>alert($updateid)</script>";
+   
+  
+         $result_revoke = mysql_query( "UPDATE T_APPLICATION SET DELETE_FLAG = 1, A_STATUS = 'Revoked' where A_ID = $updateid ")
+    
+                  or die(mysql_error());
 
 
 
 
+     }          
 
-                       
+
+
 
 ?>
 
@@ -70,9 +140,9 @@ error_reporting(0);
 
 <section>
     <?php include 'GFSSIS_G_Header.php'; ?>
-    <?php include 'GFSSIS_R_LeftNavigation.php'; ?>
+    <?php include 'sis_r_leftnav.php'; ?>
     <?php include 'GFSSIS_G_Modals.php'; ?>
-    <?php include 'sis_r_applicationmodal.php'; ?>
+
 
 
 
@@ -107,10 +177,10 @@ error_reporting(0);
                                 mysql_select_db("sis_gfs", $con);
                                  $level_sort = mysql_real_escape_string(htmlspecialchars( $_POST['level_sort']));
 
-                                                $none = "select app.lrn, app.a_id , concat(fname,' ', MNAME, ' ',LNAME) as name, l.l_name  as level , a_status
-                from t_application as app inner join r_grade_level as l on app.prev_grade_level = l.GL_ID order by app.a_id desc";
-                                                $lvl = "select app.a_id as learner, app.lrn, concat(fname,' ', MNAME, ' ',LNAME) as name, l.l_name  as level , a_status
-                from t_application as app inner join r_grade_level as l on app.prev_grade_level = l.GL_ID where app.prev_grade_level = $level_sort order by app.a_id desc";
+                                                $none = "select  app.req_pic, app.req_exam, app.req_cert, app.req_gmc, app.req_f137, app.req_pass, app.req_nso, app.a_date, app.lrn, app.a_id , concat(fname,' ', MNAME, ' ',LNAME) as name, l.l_name  as level , a_status
+                from t_application as app inner join r_grade_level as l on app.prev_grade_level = l.GL_ID where app.a_status ='Pending' AND app.DELETE_FLAG = 0 order by app.a_id desc";
+                                                $lvl = "select app.req_pic, app.req_exam, app.req_cert, app.req_gmc, app.req_f137, app.req_pass, app.req_nso, app.a_date, app.a_id as learner, app.lrn, concat(fname,' ', MNAME, ' ',LNAME) as name, l.l_name  as level , a_status
+                from t_application as app inner join r_grade_level as l on app.prev_grade_level = l.GL_ID where app.prev_grade_level = $level_sort   AND app.DELETE_FLAG = 0 order by app.a_id desc";
 
                                  if (!isset($_POST['level_sort'])) 
                                          $result = mysql_query($none); 
@@ -162,6 +232,7 @@ error_reporting(0);
                                     <th>LRN</th>
                                     <th>Applicant Name</th>
                                     <th>Previous Grade Level</th>
+                                    <th>Date Submitted</th>
                                     <th>Status</th>
                                     
                                         <th>Action</th>
@@ -176,7 +247,15 @@ error_reporting(0);
 
                                                     {
 
-                                      $ids = $row['a_id'];
+                                        $ids = $row['a_id'];
+                                        $nso = $row['req_nso'];
+                                        $pic = $row['req_pic'];
+                                        $exam = $row['req_exam'];
+                                        $f137 = $row['req_f137'];
+                                        $gmc = $row['req_gmc'];
+                                        $pass = $row['req_pass'];
+                                        $cert = $row['req_cert'];
+
 
 
                                                             echo "<tbody>";
@@ -191,13 +270,25 @@ error_reporting(0);
                                               echo "<td class='sy-content'>" . $row['lrn'] ."</td>";
                                                 echo "<td class='sy-content'> " . $row['name'] ."</td>";
                                                  echo "<td class='sy-content'> " . $row['level'] ."</td>";
+                                                   echo "<td class='sy-content'> " . $row['a_date'] ."</td>";
                                                  echo "<td class='sy-content'> " . $row['a_status'] ."</td>";?>
                                       <td class="sy-content"><a class="btn btn-info"  href="#edit<?php echo $ids;?>" data-toggle="modal">
                                             <i class="fa fa-eye" ></i></a>
 
-                                            <button type="submit" class="btn btn-primary" title="Approve" name="approve"><i class="fa fa-check-square-o"></i></button>
+                                           <a class="btn btn-primary"  href="#check<?php echo $ids;?>" data-toggle="modal"><i class="fa fa-files-o"></i></a>
+                                           <?php if($nso == 1 && $pic == 1 && $gmc == 1 && $exam == 1 && $cert == 1 && $pass == 1 && $f137 == 1) {?>
+
+                                            <a class="btn btn-warning"   href="#approveModal<?php echo $ids;?>" data-toggle="modal"><i class="fa fa-check"></i></a> 
+                                            <?php  
+                                          }
+                                          else{
+
+                                          ?>
+                                         <a class="btn btn-warning"  disabled href="#approveModal<?php echo $ids;?>" data-toggle="modal"><i class="fa fa-check"></i></a> 
+                                          <?php }?>
+
                                     
-                                             <a type="submit" class="btn btn-danger" title="Delete" name="enable" id ="enable" >
+                                             <a type="submit" class="btn btn-danger" title="Delete" name="enable" id ="enable" href="#revokeModal<?php echo $ids;?>" data-toggle="modal">
                                             <i class="fa fa-times" ></i></a>
                                         </td><?php
                                             
@@ -235,7 +326,7 @@ error_reporting(0);
 
 
             
-                    $sql = "SELECT a_id, lrn, fname, mname, lname, bdate,sex, mtongue, religion, contact, pbirth, street, brgy, municipal, city, marital, nationality,email, mother, mother_phone, mother_occu, father, father_phone, father_occu, guard, guard_rel, guard_contact,prev_school, gwa  from t_application";
+                    $sql = "SELECT a_id, lrn, fname, mname, lname, bdate,sex, mtongue, religion, contact, pbirth, street, brgy, municipal, city, marital, nationality,email, mother, mother_phone, mother_occu, father, father_phone, father_occu, guard, guard_rel, guard_contact,prev_school, gwa, req_nso, req_pic, req_exam, req_f137, req_gmc, req_cert, req_pass  from t_application";
 
                                                  
                       $result4 = mysql_query($sql);
@@ -274,6 +365,13 @@ error_reporting(0);
                             $guard_contact = $row['guard_contact'];
                             $prev_school = $row['prev_school'];
                             $gwa = $row['gwa'];
+                            $nso = $row['req_nso'];
+                            $pic = $row['req_pic'];
+                            $exam = $row['req_exam'];
+                            $f137 = $row['req_f137'];
+                            $gmc = $row['req_gmc'];
+                            $pass = $row['req_pass'];
+                            $cert = $row['req_cert'];
 
                        
 
@@ -329,6 +427,194 @@ error_reporting(0);
             </div>
         </div>
     </div>
+
+
+
+     <div aria-hidden="true" aria-labelledby="myModalLabel" role="dialog" tabindex="-1"  id="check<?php echo $ids; ?>" class="modal fade">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button aria-hidden="true" data-dismiss="modal" class="close" type="button" style="color: white">×</button>
+                    <div class="warning"><h4 class="modal-title" style="color: white;">Evaluate Applicant: Requirements Checklist</h4></div>
+                </div>
+                <div class="modal-body" style="height: 500px;">
+                    <form role="form" method="POST" >
+                        <tr class="col-md-3 form-group">
+                
+                                   <div class="form-group">
+                                        <label class="col-sm-3 control-label" >Requirements:</label>
+                                        <div class="col-sm-9">
+
+                                            <div class="checkbox single-row">
+                                              <?php 
+                                                //echo $nso;
+                                                  if ($nso == 0 ){
+                                              echo'
+                                                 <input type="hidden" name = "req_nso" value="0">
+                                                <input type="checkbox" name = "req_nso" value="1">
+                                                ';
+                                              } 
+                                                  else if ($nso == 1) 
+                                                    echo'
+                                                   <input type="checkbox" checked name = "req_nso" value="1"
+                                                   >';  ?>
+                                                <label>Two (2) photocopies of NSO Birth Certificate</label>
+                                            </div>
+
+                                            <div class="checkbox single-row">
+                                                <?php 
+                                                //echo $nso;
+                                                  if ($pic == 0 ){
+                                              echo'
+                                                 <input type="hidden" name = "req_pic" value="0">
+                                                <input type="checkbox" name = "req_pic" value="1">';
+                                              } 
+                                                  else if ($pic == 1) 
+                                                    echo'
+                                                   <input type="checkbox" checked name = "req_pic" value="1">';  ?>
+                                                <label>Two (2) pieces of recent 1 x 1 picture</label>
+                                            </div>
+
+                                            <div class="checkbox single-row">
+                                                 <?php 
+                                                //echo $nso;
+                                                  if ($exam == 0 ){
+                                              echo'
+                                                <input type="hidden" name = "req_exam" value="0">
+                                                <input type="checkbox" name = "req_exam" value="1">
+                                                ';
+                                              } 
+                                                  else if ($exam == 1) 
+                                                    echo'
+                                                   <input type="checkbox" checked name = "req_exam" value="1">';  ?>
+                                                <label>Entrance Examination</label>
+                                            </div>
+
+                                            <div class="checkbox single-row">
+                                                <label class="checkbox"> <?php 
+                                                //echo $nso;
+                                                  if ($pass == 0 ){
+                                              echo'
+                                                <input type="hidden" name = "req_pass" value="0">
+                                                <input type="checkbox" name = "req_pass" value="1">
+                                                ';
+                                              } 
+                                                  else if ($pass == 1) 
+                                                    echo'
+                                                   <input type="checkbox" checked name = "req_pass" value="1">';  ?></label>
+                                                <label>Passing Grade</label>
+                                            </div>
+
+                                            <div class="checkbox single-row">
+                                                <label class="checkbox"> <?php 
+                                                //echo $nso;
+                                                  if ($f137 == 0 ){
+                                              echo'
+                                                <input type="hidden" name = "req_f137" value="0">
+                                                <input type="checkbox" name = "req_f137" value="1">
+                                                 ';
+                                              } 
+                                                  else if ($f137 == 1) 
+                                                    echo'
+                                                   <input type="checkbox" checked name = "req_f137" value="1">';  ?></label>
+                                                <label>Form 137 (Permanent Records)</label>
+                                            </div>
+
+                                            <div class="checkbox single-row">
+                                                <label class="checkbox"> <?php 
+                                                //echo $nso;
+                                                  if ($gmc == 0 ){
+                                              echo'
+                                                <input type="hidden" name = "req_gmc" value="0">
+                                                <input type="checkbox" name = "req_gmc" value="1">
+                                                 ';
+                                              } 
+                                                  else if ($gmc == 1) 
+                                                    echo'
+                                                   <input type="checkbox" checked name = "req_gmc" value="1">';  ?></label>
+                                                <label>Certificate of Good Moral Character</label>
+                                            </div>
+
+                                            <div class="checkbox single-row">
+                                                <label class="checkbox"> <?php 
+                                                //echo $nso;
+                                                  if ($cert == 0 ){
+                                              echo'
+                                                <input type="hidden" name = "req_cert" value="0">
+                                                <input type="checkbox" name = "req_cert" value="1">
+                                                ';
+                                              } 
+                                                  else if ($cert == 1) 
+                                                    echo'
+                                                   <input type="checkbox" checked name = "req_cert" value="1">';  ?></label>
+                                                <label>Medical Certificate</label>
+                                            </div>
+                                        </div>
+                                      </div>
+
+
+                                                <div style="margin-top: 50px; margin-left: 70px;">
+                                                <button type="submit" class="btn btn-success" name="submit_checklist" >Submit</button>
+                                                <button type="submit" class="btn btn-danger" data-dismiss="modal">Cancel</button>                     
+                                              </div>
+                                        </div>
+                                    </div>
+                             
+                         
+                        </tr>
+           
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+      <div aria-hidden="true" aria-labelledby="myModalLabel" role="dialog" tabindex="-1" id="approveModal<?php echo $ids; ?>" class="modal fade">
+      <div class="modal-dialog" style="width: 30%">
+          <div class="modal-content">
+              <div class="modal-header">
+                  <div class="warning"><h4 class="modal-title">Application Process</h4></div>
+              </div>
+              <div class="modal-body">
+                  <form role="form" method="POST">
+                      <div class="form-group">
+                          <label for="logoutModal">Approve Application?</label>
+                      </div>
+                      
+                      <div class="logout-button">
+                          <label>ID</label><input type="text" name="updateid"  value="<?php echo $ids; ?>" class="form-control"> 
+                     
+                        <button type="submit" class="btn btn-success" name="approve" >Yes</button>
+                        <button type="submit" class="btn btn-danger" data-dismiss="modal">No</button>                     
+                      </div>
+                  </form>
+              </div>
+          </div>
+      </div>
+  </div>
+
+      <div aria-hidden="true" aria-labelledby="myModalLabel" role="dialog" tabindex="-1" id="revokeModal<?php echo $ids; ?>" class="modal fade">
+      <div class="modal-dialog" style="width: 30%">
+          <div class="modal-content">
+              <div class="modal-header">
+                  <div class="warning"><h4 class="modal-title">Application Process</h4></div>
+              </div>
+              <div class="modal-body">
+                  <form role="form" method="POST">
+                      <div class="form-group">
+                          <label for="logoutModal">Revoke Application?</label>
+                      </div>
+                      
+                      <div class="logout-button">
+                           <label>ID</label><input type="text" name="updateid"  value="<?php echo $ids; ?>" class="form-control">
+                        <button type="submit" class="btn btn-success" name="revoke" >Yes</button>
+                        <button type="submit" class="btn btn-danger" data-dismiss="modal">No</button>                     
+                      </div>
+                  </form>
+              </div>
+          </div>
+      </div>
+  </div>
 
 
     <?php }}?>
